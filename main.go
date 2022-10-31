@@ -313,6 +313,20 @@ func isLenCallExpr(args []ast.Expr) *ast.CallExpr {
 	return newMethodCallExpr(x, "Equal", []ast.Expr{lenCallExpr, lenVal})
 }
 
+func isEmptyCallExpr(args []ast.Expr) *ast.CallExpr {
+	seq := args[0]
+	lenVal := &ast.BasicLit{
+		Kind:  token.INT,
+		Value: "1",
+	}
+	lenCallExpr := newFuncCallExpr("len", []ast.Expr{seq})
+	var x ast.Expr = &ast.Ident{Name: "is"}
+	if len(args) > 1 {
+		x = msgCallExpr(args[1:], true)
+	}
+	return newMethodCallExpr(x, "Equal", []ast.Expr{lenCallExpr, lenVal})
+}
+
 func isGreaterOrEqualExpr(args []ast.Expr) *ast.CallExpr {
 	a := args[0]
 	b := args[1]
@@ -342,7 +356,7 @@ func isGreaterOrEqualExpr(args []ast.Expr) *ast.CallExpr {
 
 func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
 	switch funcName {
-	case "Equal", "ObjectsAreEqual", "ObjectsAreEqualValues":
+	case "Equal", "ObjectsAreEqual", "ObjectsAreEqualValues", "EqualValues":
 		if len(args) > 2 {
 			return isCallExpr("Equal", args[:2], args[2:])
 		} else {
@@ -354,11 +368,23 @@ func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
 		} else {
 			return isCallExpr("ErrMsg", args, nil)
 		}
+	case "NotEqual":
+		if len(args) > 2 {
+			return isCallExpr("NotEqual", args[:2], args[2:])
+		} else {
+			return isCallExpr("Equal", args, nil)
+		}
 	case "Nil":
 		if len(args) > 1 {
 			return isCallExpr("Nil", args[:1], args[1:])
 		} else {
 			return isCallExpr("Nil", args, nil)
+		}
+	case "NotNil":
+		if len(args) > 1 {
+			return isCallExpr("NotNil", args[:1], args[1:])
+		} else {
+			return isCallExpr("NotNil", args, nil)
 		}
 	case "False":
 		if len(args) > 1 {
@@ -399,11 +425,19 @@ func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
 	case "Len":
 		return isLenCallExpr(args)
 	case "Panics":
+		// in github.com/ben-turner/gin
+	case "NotPanics":
+		// in github.com/ben-turner/gin
 	case "Empty":
-		//case "FailNow":
-		//case "Fail":
+		return isEmptyCallExpr(args)
+	case "FailNow":
+	case "Fail":
 	case "GreaterOrEqual":
 		return isGreaterOrEqualExpr(args)
+	case "Regexp":
+		// in github.com/ben-turner/gin
+	case "Exactly":
+		// in github.com/ben-turner/gin
 	default:
 		fmt.Printf("--- convertFuncCallLow: unsupported function %#v\n", funcName)
 	}
