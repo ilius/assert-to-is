@@ -295,7 +295,7 @@ func newIsStatement(t_name string) ast.Stmt {
 func isCallExpr(method string, args []ast.Expr, msg []ast.Expr) *ast.CallExpr {
 	var x ast.Expr = &ast.Ident{Name: "is"}
 	if len(msg) > 0 {
-		x = msgCallExpr(msg, false)
+		x = msgCallExpr(msg, true)
 	}
 	return newMethodCallExpr(x, method, args)
 }
@@ -306,7 +306,7 @@ func isLenCallExpr(args []ast.Expr) *ast.CallExpr {
 	lenCallExpr := newFuncCallExpr("len", []ast.Expr{seq})
 	var x ast.Expr = &ast.Ident{Name: "is"}
 	if len(args) > 2 {
-		x = msgCallExpr(args[2:], false)
+		x = msgCallExpr(args[2:], true)
 	}
 	return newMethodCallExpr(x, "Equal", []ast.Expr{lenCallExpr, lenVal})
 }
@@ -316,7 +316,7 @@ func isGreaterOrEqualExpr(args []ast.Expr) *ast.CallExpr {
 	b := args[1]
 	var x ast.Expr = &ast.Ident{Name: "is"}
 	if len(args) > 2 {
-		x = msgCallExpr(args[2:], false)
+		x = msgCallExpr(args[2:], true)
 	}
 	x = newMethodCallExpr(
 		x,
