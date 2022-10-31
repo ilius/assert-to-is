@@ -250,11 +250,15 @@ func newFuncCallExpr(name string, args []ast.Expr) *ast.CallExpr {
 	}
 }
 
-func msgCallExpr(args []ast.Expr) *ast.CallExpr {
+func msgCallExpr(args []ast.Expr, addMsg bool) *ast.CallExpr {
+	method := "Msg"
+	if addMsg {
+		method = "AddMsg"
+	}
 	// make sure args[0] is string literal
 	firstLit := args[0].(*ast.BasicLit)
 	if firstLit.Kind == token.STRING {
-		return newMethodCallExpr(&ast.Ident{Name: "is"}, "Msg", args)
+		return newMethodCallExpr(&ast.Ident{Name: "is"}, method, args)
 	}
 	// otherwide, use fmt.Sprint(...)
 	sprintExpr := newMethodCallExpr(
@@ -262,7 +266,7 @@ func msgCallExpr(args []ast.Expr) *ast.CallExpr {
 		"Sprint",
 		args,
 	)
-	return newMethodCallExpr(&ast.Ident{Name: "is"}, "Msg", []ast.Expr{sprintExpr})
+	return newMethodCallExpr(&ast.Ident{Name: "is"}, method, []ast.Expr{sprintExpr})
 }
 
 func newIsCallExpr(t_name string) *ast.CallExpr {
@@ -291,7 +295,7 @@ func newIsStatement(t_name string) ast.Stmt {
 func isCallExpr(method string, args []ast.Expr, msg []ast.Expr) *ast.CallExpr {
 	var x ast.Expr = &ast.Ident{Name: "is"}
 	if len(msg) > 0 {
-		x = msgCallExpr(msg)
+		x = msgCallExpr(msg, false)
 	}
 	return newMethodCallExpr(x, method, args)
 }
@@ -302,9 +306,36 @@ func isLenCallExpr(args []ast.Expr) *ast.CallExpr {
 	lenCallExpr := newFuncCallExpr("len", []ast.Expr{seq})
 	var x ast.Expr = &ast.Ident{Name: "is"}
 	if len(args) > 2 {
-		x = msgCallExpr(args[2:])
+		x = msgCallExpr(args[2:], false)
 	}
 	return newMethodCallExpr(x, "Equal", []ast.Expr{lenCallExpr, lenVal})
+}
+
+func isGreaterOrEqualExpr(args []ast.Expr) *ast.CallExpr {
+	a := args[0]
+	b := args[1]
+	var x ast.Expr = &ast.Ident{Name: "is"}
+	if len(args) > 2 {
+		x = msgCallExpr(args[2:], false)
+	}
+	x = newMethodCallExpr(
+		x,
+		"AddMsg",
+		[]ast.Expr{
+			&ast.BasicLit{
+				Kind:  token.STRING,
+				Value: "\"expected %v >= %v\"",
+			},
+			a, b,
+		},
+	)
+	return newMethodCallExpr(x, "True", []ast.Expr{
+		&ast.BinaryExpr{
+			X:  a,
+			Op: token.GEQ,
+			Y:  b,
+		},
+	})
 }
 
 func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
@@ -370,7 +401,7 @@ func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
 		//case "FailNow":
 		//case "Fail":
 	case "GreaterOrEqual":
-		// FIXME
+		return isGreaterOrEqualExpr(args)
 	default:
 		fmt.Printf("--- convertFuncCallLow: unsupported function %#v\n", funcName)
 	}
