@@ -125,6 +125,10 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 			break
 		case *ast.DeclStmt:
 			break
+		case *ast.ReturnStmt:
+			break
+		case *ast.DeferStmt:
+			break
 		case *ast.RangeStmt:
 			fixBlockStatement(stmtTyped.Body, t_name, srcBytes)
 		case *ast.IfStmt:
@@ -150,7 +154,7 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 							body.List[i] = &ast.ExprStmt{newFc}
 							convertedCount++
 						} else {
-							fmt.Printf("--- unexpected stmt: %v\n", stmt)
+							fmt.Printf("--- (1) unexpected stmt: %v\n", stmt)
 						}
 						continue
 						//default:
@@ -172,10 +176,10 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 								}
 							}
 						}
-						fmt.Printf("--- unexpected stmt: %v\n", stmt)
+						fmt.Printf("--- (2) unexpected stmt: %v\n", stmt)
 						continue
 					}
-					fmt.Printf("--- unexpected stmt: %v\n", stmt)
+					fmt.Printf("--- (3) unexpected stmt: %v\n", stmt)
 					continue
 				case *ast.SelectorExpr:
 					// FIXME
@@ -185,7 +189,7 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 			}
 
 		default:
-			fmt.Printf("stmtIn: %T, stmt: %v\n", stmtIn, stmt)
+			fmt.Printf("fixBlockStatement: unknown statement type %T, statement: %v\n", stmtIn, stmt)
 
 		}
 
@@ -365,6 +369,10 @@ func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
 	case "Empty":
 		//case "FailNow":
 		//case "Fail":
+	case "GreaterOrEqual":
+		// FIXME
+	default:
+		fmt.Printf("--- convertFuncCallLow: unsupported function %#v\n", funcName)
 	}
 	return nil
 }
