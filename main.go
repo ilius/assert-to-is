@@ -37,7 +37,12 @@ func fixGoFile(path string) {
 	}
 	src := string(srcBytes)
 	fset := token.NewFileSet() // positions are relative to fset
-	f, err := parser.ParseFile(fset, path, src, parser.ParseComments|parser.AllErrors)
+	f, err := parser.ParseFile(
+		fset,
+		path,
+		src,
+		parser.ParseComments|parser.AllErrors,
+	)
 	if err != nil {
 		panic(err)
 	}
