@@ -153,8 +153,8 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 							fmt.Printf("--- unexpected stmt: %v\n", stmt)
 						}
 						continue
-					default:
-						fmt.Printf("--- Func name: %v\n", xName)
+						//default:
+						//	fmt.Printf("--- Func name: %v\n", xName)
 					}
 				case *ast.CallExpr:
 					xFunSel, ok := callExpr.Fun.(*ast.SelectorExpr)
@@ -177,6 +177,8 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 					}
 					fmt.Printf("--- unexpected stmt: %v\n", stmt)
 					continue
+				case *ast.SelectorExpr:
+					// FIXME
 				default:
 					fmt.Printf("--- x is %T\n", x)
 				}
@@ -216,14 +218,13 @@ func parseSelectorExpr(selectorStr string) *ast.SelectorExpr {
 	return expr
 }
 
-func newCallExpr(x ast.Expr, method string, args []ast.Expr) *ast.CallExpr {
+func newMethodCallExpr(x ast.Expr, method string, args []ast.Expr) *ast.CallExpr {
 	fun := &ast.SelectorExpr{
 		X: x,
 		Sel: &ast.Ident{
 			Name: method,
 		},
 	}
-	// fmt.Printf("newCallExpr: X=%T, Sel=%T", fun.X, fun.Sel)
 	return &ast.CallExpr{
 		Fun:  fun,
 		Args: args,
@@ -233,12 +234,35 @@ func newCallExpr(x ast.Expr, method string, args []ast.Expr) *ast.CallExpr {
 	}
 }
 
-func msgCallExpr(msg []ast.Expr) *ast.CallExpr {
-	return newCallExpr(&ast.Ident{Name: "is"}, "Msg", msg)
+func newFuncCallExpr(name string, args []ast.Expr) *ast.CallExpr {
+	return &ast.CallExpr{
+		Fun: &ast.Ident{
+			Name: name,
+		},
+		Args: args,
+		//Lparen
+		//Ellipsis
+		//Rparen
+	}
+}
+
+func msgCallExpr(args []ast.Expr) *ast.CallExpr {
+	// make sure args[0] is string literal
+	firstLit := args[0].(*ast.BasicLit)
+	if firstLit.Kind == token.STRING {
+		return newMethodCallExpr(&ast.Ident{Name: "is"}, "Msg", args)
+	}
+	// otherwide, use fmt.Sprint(...)
+	sprintExpr := newMethodCallExpr(
+		&ast.Ident{Name: "fmt"},
+		"Sprint",
+		args,
+	)
+	return newMethodCallExpr(&ast.Ident{Name: "is"}, "Msg", []ast.Expr{sprintExpr})
 }
 
 func newIsCallExpr(t_name string) *ast.CallExpr {
-	return newCallExpr(
+	return newMethodCallExpr(
 		&ast.Ident{Name: "is"},
 		"New",
 		[]ast.Expr{
@@ -261,13 +285,22 @@ func newIsStatement(t_name string) ast.Stmt {
 }
 
 func isCallExpr(method string, args []ast.Expr, msg []ast.Expr) *ast.CallExpr {
-	var x ast.Expr = &ast.Ident{
-		Name: "is",
-	}
+	var x ast.Expr = &ast.Ident{Name: "is"}
 	if len(msg) > 0 {
 		x = msgCallExpr(msg)
 	}
-	return newCallExpr(x, method, args)
+	return newMethodCallExpr(x, method, args)
+}
+
+func isLenCallExpr(args []ast.Expr) *ast.CallExpr {
+	seq := args[0]
+	lenVal := args[1]
+	lenCallExpr := newFuncCallExpr("len", []ast.Expr{seq})
+	var x ast.Expr = &ast.Ident{Name: "is"}
+	if len(args) > 2 {
+		x = msgCallExpr(args[2:])
+	}
+	return newMethodCallExpr(x, "Equal", []ast.Expr{lenCallExpr, lenVal})
 }
 
 func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
@@ -326,6 +359,10 @@ func convertFuncCallLow(funcName string, args []ast.Expr) *ast.CallExpr {
 		} else {
 			return isCallExpr("EqualType", args, nil)
 		}
+	case "Len":
+		return isLenCallExpr(args)
+	case "Panics":
+	case "Empty":
 		//case "FailNow":
 		//case "Fail":
 	}
