@@ -104,13 +104,6 @@ func fixTestFunc(obj *ast.Object, srcBytes []byte) {
 	t_name := params[0].Names[0].Name
 	body := decl.Body // *ast.BlockStmt
 	fixBlockStatement(body, t_name, srcBytes)
-	// TODO:
-	doc := decl.Doc // *ast.CommentGroup, associated documentation; or nil
-	if doc != nil {
-		for _, comment := range doc.List {
-			fmt.Printf("Comment: %v\n", comment)
-		}
-	}
 }
 
 func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
