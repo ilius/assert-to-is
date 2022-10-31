@@ -256,8 +256,8 @@ func msgCallExpr(args []ast.Expr, addMsg bool) *ast.CallExpr {
 		method = "AddMsg"
 	}
 	// make sure args[0] is string literal
-	firstLit := args[0].(*ast.BasicLit)
-	if firstLit.Kind == token.STRING {
+	firstLit, ok := args[0].(*ast.BasicLit)
+	if ok && firstLit.Kind == token.STRING {
 		return newMethodCallExpr(&ast.Ident{Name: "is"}, method, args)
 	}
 	// otherwide, use fmt.Sprint(...)
