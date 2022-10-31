@@ -377,10 +377,13 @@ func convertFuncCall(fc *ast.CallExpr, t_name string) *ast.CallExpr {
 		return nil
 	}
 	{
-		firstArg := args[0].(*ast.Ident)
-		// firstArg.Obj is nil
-		if firstArg.Name == t_name {
-			args = args[1:]
+		// args[0] can also be ast.SelectorExpr
+		firstArg, ok := args[0].(*ast.Ident)
+		if ok {
+			// firstArg.Obj is nil
+			if firstArg.Name == t_name {
+				args = args[1:]
+			}
 		}
 	}
 	/*for _, arg := range args {
