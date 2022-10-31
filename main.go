@@ -133,6 +133,8 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 			fixBlockStatement(stmtTyped.Body, t_name, srcBytes)
 		case *ast.IfStmt:
 			fixBlockStatement(stmtTyped.Body, t_name, srcBytes)
+		case *ast.BlockStmt:
+			fixBlockStatement(stmtTyped, t_name, srcBytes)
 		case (*ast.ExprStmt):
 			callExpr, ok := stmtTyped.X.(*ast.CallExpr)
 			if !ok {
