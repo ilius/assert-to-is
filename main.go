@@ -6,11 +6,13 @@ import (
 	"go/ast"
 	"go/format"
 	"go/parser"
+	"go/printer"
 	"go/token"
-	"golang.org/x/tools/go/ast/astutil"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 /*
@@ -66,16 +68,23 @@ func fixGoFile(path string) {
 		}
 		fixTestFunc(obj, srcBytes)
 	}
-	buf := bytes.NewBuffer(nil)
-	err = format.Node(buf, fset, f)
+
+	printConfig := &printer.Config{
+		Mode:     printer.TabIndent | printer.UseSpaces,
+		Tabwidth: 4,
+	}
+
+	var buf bytes.Buffer
+	err = printConfig.Fprint(&buf, fset, f)
 	if err != nil {
 		panic(err)
 	}
+
 	newCode, err := format.Source(buf.Bytes())
 	if err != nil {
 		panic(err)
 	}
-	// fmt.Printf(string(newCode))
+
 	err = ioutil.WriteFile(path, newCode, 0644)
 	if err != nil {
 		panic(err)
