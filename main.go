@@ -7,6 +7,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"golang.org/x/tools/go/ast/astutil"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -16,11 +17,11 @@ import (
 
 migrate to github.com/ilius/is/v2
 
+https://github.com/stretchr/testify/network/dependents
+
 
 known problems:
-
-1- imports are unchanged (new import is not added)
-2- functions that are clusure or variable or values of maps or slices are not fixed
+1- functions that are clusure or variable or values of maps or slices are not fixed
 
 */
 
@@ -47,20 +48,14 @@ func fixGoFile(path string) {
 		panic(err)
 	}
 
-	imports := []*ast.ImportSpec{}
 	for _, imp := range f.Imports {
-		if strings.HasPrefix(strings.Trim(imp.Path.Value, `"`), "github.com/stretchr/") {
-			continue
+		impPath := strings.Trim(imp.Path.Value, `"`)
+		if strings.HasPrefix(impPath, "github.com/stretchr/") {
+			astutil.DeleteNamedImport(fset, f, "", impPath)
 		}
-		imports = append(imports, imp)
 	}
-	imports = append(imports, &ast.ImportSpec{
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: "github.com/ilius/is/v2",
-		},
-	})
-	f.Imports = imports
+	astutil.AddNamedImport(fset, f, "", "github.com/ilius/is/v2")
+
 	for _, obj := range f.Scope.Objects {
 		if obj.Kind != ast.Fun {
 			continue
