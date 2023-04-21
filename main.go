@@ -62,10 +62,6 @@ func fixGoFile(path string) {
 		if obj.Kind != ast.Fun {
 			continue
 		}
-		name := obj.Name
-		if !strings.HasPrefix(name, "Test") {
-			continue
-		}
 		fixTestFunc(obj, srcBytes)
 	}
 
@@ -85,7 +81,7 @@ func fixGoFile(path string) {
 		panic(err)
 	}
 
-	err = ioutil.WriteFile(path, newCode, 0644)
+	err = ioutil.WriteFile(path, newCode, 0o644)
 	if err != nil {
 		panic(err)
 	}
@@ -94,14 +90,35 @@ func fixGoFile(path string) {
 func fixTestFunc(obj *ast.Object, srcBytes []byte) {
 	decl := obj.Decl.(*ast.FuncDecl)
 	typ := decl.Type
-	if typ.Results != nil && len(typ.Results.List) > 0 {
-		return
-	}
 	params := typ.Params.List
-	if len(params) != 1 {
+	t_name := ""
+	for _, param := range params {
+		if len(param.Names) < 1 {
+			continue
+		}
+		paramType, ok := param.Type.(*ast.StarExpr)
+		if !ok {
+			continue
+		}
+		x, ok := paramType.X.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		xx, ok := x.X.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		if xx.Name != "testing" {
+			continue
+		}
+		if x.Sel.Name != "T" {
+			continue
+		}
+		t_name = param.Names[0].Name
+	}
+	if t_name == "" {
 		return
 	}
-	t_name := params[0].Names[0].Name
 	body := decl.Body // *ast.BlockStmt
 	fixBlockStatement(body, t_name, srcBytes)
 }
@@ -159,7 +176,7 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 							fmt.Printf("--- (1) unexpected stmt: %v\n", stmt)
 						}
 						continue
-						//default:
+						// default:
 						//	fmt.Printf("--- Func name: %v\n", xName)
 					}
 				case *ast.CallExpr:
@@ -212,7 +229,6 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 			newIsStatement(t_name),
 		}, body.List...)
 	}
-
 }
 
 func parseSelectorExpr(selectorStr string) *ast.SelectorExpr {
@@ -234,9 +250,9 @@ func newMethodCallExpr(x ast.Expr, method string, args []ast.Expr) *ast.CallExpr
 	return &ast.CallExpr{
 		Fun:  fun,
 		Args: args,
-		//Lparen
-		//Ellipsis
-		//Rparen
+		// Lparen
+		// Ellipsis
+		// Rparen
 	}
 }
 
@@ -246,9 +262,9 @@ func newFuncCallExpr(name string, args []ast.Expr) *ast.CallExpr {
 			Name: name,
 		},
 		Args: args,
-		//Lparen
-		//Ellipsis
-		//Rparen
+		// Lparen
+		// Ellipsis
+		// Rparen
 	}
 }
 
@@ -286,7 +302,7 @@ func newIsStatement(t_name string) ast.Stmt {
 		Lhs: []ast.Expr{
 			&ast.Ident{Name: "is"},
 		},
-		//TokPos token.Pos   // position of Tok
+		// TokPos token.Pos   // position of Tok
 		Tok: token.DEFINE,
 		Rhs: []ast.Expr{
 			newIsCallExpr(t_name),
