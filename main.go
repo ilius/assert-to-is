@@ -123,16 +123,73 @@ func fixTestFunc(obj *ast.Object, srcBytes []byte) {
 	fixBlockStatement(body, t_name, srcBytes)
 }
 
+func fixExprStmt(exprStmt *ast.ExprStmt, stmtString string, t_name string) (convertedCount int) {
+	callExpr, ok := exprStmt.X.(*ast.CallExpr)
+	if !ok {
+		fmt.Printf("ERROR: unknown stmtTyped.X type %T\n", exprStmt.X)
+		return
+	}
+	funcSel, ok := callExpr.Fun.(*ast.SelectorExpr)
+	if ok {
+		x := funcSel.X
+		switch xt := x.(type) {
+		case *ast.Ident:
+			xName := xt.Name
+			switch xName {
+			case "is":
+				return
+			case "require", "assert":
+				newFc := convertFuncCall(callExpr, t_name)
+				if newFc != nil {
+					*exprStmt = ast.ExprStmt{newFc}
+					convertedCount++
+				} else {
+					fmt.Printf("--- (1) unexpected stmt: %v\n", stmtString)
+				}
+				return
+				// default:
+				//	fmt.Printf("--- Func name: %v\n", xName)
+			}
+		case *ast.CallExpr:
+			xFunSel, ok := callExpr.Fun.(*ast.SelectorExpr)
+			if ok {
+				callExpr2, ok := xFunSel.X.(*ast.CallExpr)
+				if ok {
+					callExpr2FunSel, ok := callExpr2.Fun.(*ast.SelectorExpr)
+					if ok {
+						xIdent2, ok := callExpr2FunSel.X.(*ast.Ident)
+						if ok {
+							if xIdent2.Name == "is" {
+								return
+							}
+							fmt.Printf("--- xIdent2.Name == %v\n", xIdent2.Name)
+						}
+					}
+				}
+				fmt.Printf("--- (2) unexpected stmt: %v\n", stmtString)
+				return
+			}
+			fmt.Printf("--- (3) unexpected stmt: %v\n", stmtString)
+			return
+		case *ast.SelectorExpr:
+			// FIXME
+		default:
+			fmt.Printf("--- x is %T\n", x)
+		}
+	}
+	return
+}
+
 func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 	hasIsNew := false
 	convertedCount := 0
-	for i, stmtIn := range body.List {
+	for _, stmtIn := range body.List {
 		// type of stmtIn is ats.Stmt interface
 		// underlying struct is either *ast.AssignStmt or *ast.ExprStmt
 		pos := stmtIn.Pos()
 		end := stmtIn.End()
-		stmt := string(srcBytes[pos-1 : end])
-		if strings.HasPrefix(stmt, "is := is.New") {
+		stmtString := string(srcBytes[pos-1 : end])
+		if strings.HasPrefix(stmtString, "is := is.New") {
 			hasIsNew = true
 			continue
 		}
@@ -153,62 +210,9 @@ func fixBlockStatement(body *ast.BlockStmt, t_name string, srcBytes []byte) {
 		case *ast.BlockStmt:
 			fixBlockStatement(stmtTyped, t_name, srcBytes)
 		case (*ast.ExprStmt):
-			callExpr, ok := stmtTyped.X.(*ast.CallExpr)
-			if !ok {
-				fmt.Printf("ERROR: unknown stmtTyped.X type %T\n", stmtTyped.X)
-				continue
-			}
-			funcSel, ok := callExpr.Fun.(*ast.SelectorExpr)
-			if ok {
-				x := funcSel.X
-				switch xt := x.(type) {
-				case *ast.Ident:
-					xName := xt.Name
-					switch xName {
-					case "is":
-						continue
-					case "require", "assert":
-						newFc := convertFuncCall(callExpr, t_name)
-						if newFc != nil {
-							body.List[i] = &ast.ExprStmt{newFc}
-							convertedCount++
-						} else {
-							fmt.Printf("--- (1) unexpected stmt: %v\n", stmt)
-						}
-						continue
-						// default:
-						//	fmt.Printf("--- Func name: %v\n", xName)
-					}
-				case *ast.CallExpr:
-					xFunSel, ok := callExpr.Fun.(*ast.SelectorExpr)
-					if ok {
-						callExpr2, ok := xFunSel.X.(*ast.CallExpr)
-						if ok {
-							callExpr2FunSel, ok := callExpr2.Fun.(*ast.SelectorExpr)
-							if ok {
-								xIdent2, ok := callExpr2FunSel.X.(*ast.Ident)
-								if ok {
-									if xIdent2.Name == "is" {
-										continue
-									}
-									fmt.Printf("--- xIdent2.Name == %v\n", xIdent2.Name)
-								}
-							}
-						}
-						fmt.Printf("--- (2) unexpected stmt: %v\n", stmt)
-						continue
-					}
-					fmt.Printf("--- (3) unexpected stmt: %v\n", stmt)
-					continue
-				case *ast.SelectorExpr:
-					// FIXME
-				default:
-					fmt.Printf("--- x is %T\n", x)
-				}
-			}
-
+			fixExprStmt(stmtTyped, stmtString, t_name)
 		default:
-			fmt.Printf("fixBlockStatement: unknown statement type %T, statement: %v\n", stmtIn, stmt)
+			fmt.Printf("fixBlockStatement: unknown statement type %T, statement: %v\n", stmtIn, stmtString)
 
 		}
 
